@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>生活好時光 (記憶力) PoC版</title>
+    <title>生活好時光(記憶力) PoC版</title>
     <style>
         :root {
             --bg-color: #FDFBF7;
             --text-color: #333333;
             --primary-btn: #2A9D8F;
-            --secondary-btn: #E9C46A;
             --card-bg: #FFFFFF;
             --shadow: 0 4px 15px rgba(0,0,0,0.08);
             --highlight-red: #D32F2F;
@@ -35,6 +34,16 @@
         .stage { width: 100%; max-width: 800px; text-align: center; margin-top: 60px; }
 
         h2 { font-size: 1.8rem; margin-bottom: 20px; color: var(--text-color); }
+
+        /* 表單樣式 */
+        .input-group {
+            display: flex; flex-direction: column; gap: 15px; margin: 30px auto; max-width: 300px;
+        }
+        .input-group input {
+            padding: 15px; font-size: 1.2rem; border: 2px solid #ddd; 
+            border-radius: 10px; text-align: center; outline: none;
+        }
+        .input-group input:focus { border-color: var(--primary-btn); }
 
         .items-container { 
             display: flex; gap: 15px; justify-content: center; 
@@ -63,20 +72,16 @@
             cursor: pointer; box-shadow: 0 6px 20px rgba(42, 157, 143, 0.3); margin-top: 20px;
         }
 
-        .btn-large:active { transform: scale(0.95); }
-
         .metrics-log {
             background: #fff; padding: 25px; border-radius: 15px;
             font-size: 1.1rem; text-align: left; margin-top: 20px; 
             box-shadow: var(--shadow); border: 1px solid #eee; line-height: 1.6;
         }
 
-        .metrics-log strong { color: #111; font-size: 1.2rem; }
-        .metrics-log span.desc { display: block; font-size: 0.95rem; color: #666; margin-bottom: 15px; margin-top: 5px; }
+        .metrics-log strong { color: #111; font-size: 1.2rem; display: block; margin-top: 15px;}
+        .metrics-log span.desc { display: block; font-size: 0.95rem; color: #666; margin-top: 5px; }
 
-        #timer-bar-container {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 8px; background: #eee;
-        }
+        #timer-bar-container { position: fixed; bottom: 0; left: 0; width: 100%; height: 8px; background: #eee; display: none;}
         #timer-bar { height: 100%; background: var(--highlight-red); width: 100%; transition: width 0.1s linear; }
     </style>
 </head>
@@ -84,42 +89,62 @@
 
     <div id="timer-bar-container"><div id="timer-bar"></div></div>
 
-    <div class="status-bar">
+    <div class="status-bar" id="status-bar" style="display: none;">
         <div id="level-tag" class="tag" style="color: var(--primary-btn);">難度: 1</div>
         <div id="time-tag" class="tag" style="color: var(--highlight-red);">60s</div>
     </div>
 
     <div class="stage" id="game-stage">
-        <h1>🌞 腦力極限挑戰</h1>
-        <h2>準備好挑戰你的記憶天花板了嗎？</h2>
-        <button class="btn-large" onclick="startGame()">開始 60 秒挑戰</button>
+        <h1>🌞 生活好時光(記憶力) PoC版</h1>
+        <h2>請先建立您的基準資料</h2>
+        <div class="input-group">
+            <input type="text" id="user-name" placeholder="輸入姓名或暱稱" required>
+            <input type="number" id="user-age" placeholder="輸入實際年齡" min="10" max="120" required>
+        </div>
+        <button class="btn-large" onclick="validateAndStart()">開始驗證</button>
     </div>
 
     <script>
         const ASSETS = ["🍎", "🥦", "🍞", "🥩", "🐟", "🥕", "🍇", "🥚", "🥛", "🍪", "🔑", "📱", "🌂", "👓", "☕", "🧢", "📺", "🧦", "📚", "💊", "🐶", "🐱", "🐦", "🌷", "🌲", "🦋", "🌞", "🚲", "🎈", "🐝"];
         
-        // 臨床特徵數據容器
         let metrics = {
-            rtArray: [],           // 儲存每次點擊正確目標的反應時間
-            maxCapacity: 0,        // 最大記憶容量 (最高答對的目標數量)
-            commissionErrors: 0    // 假性記憶 (點擊錯誤干擾項的次數)
+            userName: "", userAge: 0, startLevel: 1, rtArray: [], maxCapacity: 0, commissionErrors: 0
         };
 
-        let currentLevel = 1;      // 動態難度級別
-        let currentTargets = [];   // 當前關卡的正確目標
-        let selectedItems = [];    // 使用者已點擊的項目
-        
+        let currentLevel = 1;
+        let currentTargets = [];
+        let selectedItems = [];
         let globalTimer = null;
         let startTime = 0;
-        let optionsRenderTime = 0; // 選項出現的時間點
-        let isRetrieving = false;  // 狀態鎖：是否處於可點擊選項的狀態
+        let optionsRenderTime = 0;
+        let isRetrieving = false;
 
-        function startGame() {
-            // 重置所有數據與狀態
-            metrics = { rtArray: [], maxCapacity: 0, commissionErrors: 0 };
-            currentLevel = 1;
-            startTime = performance.now();
+        // 步驟 1：驗證輸入與初始化難度
+        function validateAndStart() {
+            const nameInput = document.getElementById('user-name').value.trim();
+            const ageInput = parseInt(document.getElementById('user-age').value);
+
+            if (!nameInput || isNaN(ageInput) || ageInput <= 0) {
+                alert("請輸入有效的暱稱與年齡，以確保特徵數據準確度。");
+                return;
+            }
+
+            // 分齡邏輯設定起始難度
+            if (ageInput <= 40) currentLevel = 3;      // 預設記 4 個
+            else if (ageInput <= 60) currentLevel = 2; // 預設記 3 個
+            else currentLevel = 1;                     // 預設記 2 個
+
+            metrics = {
+                userName: nameInput,
+                userAge: ageInput,
+                startLevel: currentLevel,
+                rtArray: [], maxCapacity: 0, commissionErrors: 0
+            };
+
+            document.getElementById('status-bar').style.display = 'flex';
+            document.getElementById('timer-bar-container').style.display = 'block';
             
+            startTime = performance.now();
             startGlobalTimer();
             playRound();
         }
@@ -147,24 +172,18 @@
             selectedItems = [];
             document.getElementById('level-tag').innerText = `難度: ${currentLevel}`;
             
-            // 動態難度設定：Level 1 從 2 個物件開始，每升一級多 1 個
             const targetCount = currentLevel + 1; 
-            const distractorCount = targetCount + 2; // 干擾項永遠比目標多 2 個，製造壓力
+            const distractorCount = targetCount + 2; 
             
-            // 隨機抽取目標與干擾項
             const shuffledAssets = [...ASSETS].sort(() => 0.5 - Math.random());
             currentTargets = shuffledAssets.slice(0, targetCount);
             const distractors = shuffledAssets.slice(targetCount, targetCount + distractorCount);
             const allOptions = [...currentTargets, ...distractors].sort(() => 0.5 - Math.random());
 
-            // 1. 編碼期 (記住目標) - 固定給予 3 秒
             renderStage(`<h2>請記住這 ${targetCount} 個物品</h2>`, currentTargets, false);
             
             setTimeout(() => {
-                // 若時間已到，不再渲染選項
                 if (performance.now() - startTime >= 60000) return; 
-                
-                // 2. 檢索期 (找出目標)
                 renderStage(`<h2>請選出剛才出現的 ${targetCount} 個物品</h2>`, allOptions, true);
                 optionsRenderTime = performance.now();
                 isRetrieving = true;
@@ -174,12 +193,10 @@
         function renderStage(titleHtml, items, isClickable) {
             const stage = document.getElementById('game-stage');
             let html = titleHtml + `<div class="items-container">`;
-            
             items.forEach(item => {
                 const clickAttr = isClickable ? `onclick="handleTap(this, '${item}')"` : '';
                 html += `<div class="item-card" ${clickAttr}>${item}</div>`;
             });
-            
             html += `</div>`;
             stage.innerHTML = html;
         }
@@ -193,13 +210,54 @@
             if (isCorrect) {
                 el.classList.add('selected');
                 selectedItems.push(val);
-                
-                // 紀錄反應速度：從選項出現到點擊正確目標的時間差
                 metrics.rtArray.push(now - optionsRenderTime);
 
-                // 檢查是否已找齊所有目標
                 if (selectedItems.length === currentTargets.length) {
-                    isRetrieving = false; // 鎖定點擊
-                    // 紀錄最大容量
-                    if (currentTargets.length > metrics.maxCapacity) {
-                        metrics.maxCapacity = currentTargets.length;
+                    isRetrieving = false; 
+                    if (currentTargets.length > metrics.maxCapacity) metrics.maxCapacity = currentTargets.length;
+                    currentLevel++; 
+                    setTimeout(playRound, 500); 
+                }
+            } else {
+                el.classList.add('error');
+                metrics.commissionErrors++;
+                isRetrieving = false; 
+                currentLevel = Math.max(1, currentLevel - 1);
+                setTimeout(playRound, 800); 
+            }
+        };
+
+        function endGame() {
+            document.getElementById('status-bar').style.display = 'none';
+            document.getElementById('timer-bar-container').style.display = 'none';
+            
+            const avgRT = metrics.rtArray.length > 0 
+                ? Math.round(metrics.rtArray.reduce((a, b) => a + b, 0) / metrics.rtArray.length) 
+                : 0;
+
+            // 生成帶有使用者名稱與年齡標記的 Mock ID，便於醫療展示識別
+            const mockID = `Z-${metrics.userName.substring(0,2).toUpperCase()}-${metrics.userAge}-` + Date.now().toString().slice(-4);
+            const perfText = metrics.commissionErrors === 0 ? "表現完美！" : "";
+
+            const stage = document.getElementById('game-stage');
+            stage.innerHTML = `
+                <h2>分析完成</h2>
+                <div class="metrics-log">
+                    <p style="color:#2A9D8F; font-weight:bold;">[採樣成功] ID: ${mockID}</p>
+                    <p style="font-size: 0.9rem; color: #888;">基準線設定: 起始難度 Lv.${metrics.startLevel} (依據年齡 ${metrics.userAge} 歲動態配發)</p>
+                    
+                    <strong>1. 記憶檢索速度: ${avgRT} 毫秒</strong>
+                    <span class="desc">(從畫面出現到您成功點擊正確物件的平均耗時。未來將與同齡常模對比追蹤認知流暢度)</span>
+                    
+                    <strong>2. 最大記憶容量: ${metrics.maxCapacity} 個物件</strong>
+                    <span class="desc">(您在本次 60 秒極限挑戰中，大腦能同時暫存並準確無誤找出的最高物件數量)</span>
+                    
+                    <strong>3. 假性記憶干擾: ${metrics.commissionErrors} 次</strong>
+                    <span class="desc">(錯把「沒出現過的雜訊卡片」當成目標點擊的次數。${perfText}此數值越低代表記憶越清晰)</span>
+                </div>
+                <button class="btn-large" onclick="location.reload()">返回首頁重測</button>
+            `;
+        }
+    </script>
+</body>
+</html>
