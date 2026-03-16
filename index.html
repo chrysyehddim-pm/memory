@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>智慧健康平台：認知特徵採集 (亞東醫院 PoC 版)</title>
+    <title>生活好時光 (記憶力) PoC版</title>
     <style>
         :root {
-            --bg-color: #F8F9FA;
-            --primary-btn: #1A73E8;
-            --accent-red: #D93025;
+            --bg-color: #FDFBF7;
+            --text-color: #333333;
+            --primary-btn: #2A9D8F;
+            --secondary-btn: #E9C46A;
             --card-bg: #FFFFFF;
-            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --shadow: 0 4px 15px rgba(0,0,0,0.08);
+            --highlight-red: #D32F2F;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: #202124;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            margin: 0; padding: 20px;
-            display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh;
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Microsoft JhengHei', 'Heiti TC', sans-serif;
+            margin: 0; padding: 20px; display: flex; flex-direction: column; 
+            align-items: center; min-height: 100vh; box-sizing: border-box;
         }
 
         .status-bar {
@@ -28,221 +28,178 @@
         }
 
         .tag {
-            padding: 8px 16px; border-radius: 8px; font-weight: 600;
-            background: white; box-shadow: var(--shadow);
+            padding: 8px 15px; border-radius: 12px; font-size: 1.1rem; font-weight: bold;
+            background: white; box-shadow: var(--shadow); border: 2px solid #EEE;
         }
 
-        .stage { width: 100%; max-width: 800px; text-align: center; margin-top: 80px; }
+        .stage { width: 100%; max-width: 800px; text-align: center; margin-top: 60px; }
 
-        h2 { font-size: 1.8rem; color: #3C4043; }
+        h2 { font-size: 1.8rem; margin-bottom: 20px; color: var(--text-color); }
 
         .items-container { 
             display: flex; gap: 15px; justify-content: center; 
-            flex-wrap: wrap; margin: 30px 0; min-height: 200px;
+            flex-wrap: wrap; margin: 20px 0; min-height: 250px;
         }
 
         .item-card {
-            background: var(--card-bg); border: 2px solid #DADCE0; border-radius: 16px;
-            padding: 20px; font-size: 3.5rem; transition: all 0.2s;
-            cursor: pointer; user-select: none; width: 100px; height: 100px;
-            display: flex; align-items: center; justify-content: center;
+            background: var(--card-bg); border: 4px solid #eee; border-radius: 20px;
+            padding: 20px; box-shadow: var(--shadow); font-size: 4rem;
+            transition: transform 0.1s, border-color 0.2s; cursor: pointer; user-select: none;
+            width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;
         }
 
-        .item-card.selected { border-color: var(--primary-btn); background-color: #E8F0FE; transform: scale(1.05); }
+        .item-card.selected { border-color: var(--primary-btn); background-color: #E0F2F1; transform: scale(1.05); }
+        .item-card.error { border-color: var(--highlight-red); background-color: #FFEBEE; animation: shake 0.3s; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
 
         .btn-large {
             background-color: var(--primary-btn); color: white; border: none;
-            padding: 16px 40px; font-size: 1.2rem; border-radius: 30px;
-            cursor: pointer; transition: background 0.2s;
+            padding: 18px 50px; font-size: 1.5rem; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 6px 20px rgba(42, 157, 143, 0.3); margin-top: 20px;
         }
 
-        .btn-large:hover { background-color: #1557B0; }
+        .btn-large:active { transform: scale(0.95); }
 
         .metrics-log {
-            background: white; padding: 24px; border-radius: 16px;
-            text-align: left; box-shadow: var(--shadow); margin-top: 20px; line-height: 1.6;
+            background: #fff; padding: 25px; border-radius: 15px;
+            font-size: 1.1rem; text-align: left; margin-top: 20px; 
+            box-shadow: var(--shadow); border: 1px solid #eee; line-height: 1.6;
         }
 
-        .highlight { color: var(--accent-red); font-weight: bold; }
-        
-        #timer-bar {
-            position: fixed; bottom: 0; left: 0; height: 5px;
-            background: var(--primary-btn); width: 0%; transition: width 0.1s linear;
+        .metrics-log strong { color: #111; font-size: 1.2rem; }
+        .metrics-log span.desc { display: block; font-size: 0.95rem; color: #666; margin-bottom: 15px; margin-top: 5px; }
+
+        #timer-bar-container {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 8px; background: #eee;
         }
+        #timer-bar { height: 100%; background: var(--highlight-red); width: 100%; transition: width 0.1s linear; }
     </style>
 </head>
 <body>
 
-    <div id="timer-bar"></div>
+    <div id="timer-bar-container"><div id="timer-bar"></div></div>
 
     <div class="status-bar">
-        <div id="stage-tag" class="tag">等待開始</div>
-        <div id="time-tag" class="tag">60s</div>
+        <div id="level-tag" class="tag" style="color: var(--primary-btn);">難度: 1</div>
+        <div id="time-tag" class="tag" style="color: var(--highlight-red);">60s</div>
     </div>
 
-    <div class="stage" id="main-stage">
-        <h1>認知記憶特徵採集</h1>
-        <p>此為 60 秒高壓測試 PoC，用於擷取數位生物特徵。</p>
-        <button class="btn-large" onclick="initTest()">開始展示</button>
+    <div class="stage" id="game-stage">
+        <h1>🌞 腦力極限挑戰</h1>
+        <h2>準備好挑戰你的記憶天花板了嗎？</h2>
+        <button class="btn-large" onclick="startGame()">開始 60 秒挑戰</button>
     </div>
 
     <script>
-        const ASSETS = {
-            "FRUIT": ["🍎", "🍌", "🍇", "🍊", "🍓", "🍍", "🥭", "🥝", "🍐", "🍒"],
-            "OBJECT": ["🔑", "📱", "🌂", "👓", "🧢", "📺", "📚", "💊", "⌚", "🎧"],
-            "ANIMAL": ["🐶", "🐱", "🐦", "🐰", "🦊", "🦁", "🐨", "🐯", "🐼", "🐸"]
+        const ASSETS = ["🍎", "🥦", "🍞", "🥩", "🐟", "🥕", "🍇", "🥚", "🥛", "🍪", "🔑", "📱", "🌂", "👓", "☕", "🧢", "📺", "🧦", "📚", "💊", "🐶", "🐱", "🐦", "🌷", "🌲", "🦋", "🌞", "🚲", "🎈", "🐝"];
+        
+        // 臨床特徵數據容器
+        let metrics = {
+            rtArray: [],           // 儲存每次點擊正確目標的反應時間
+            maxCapacity: 0,        // 最大記憶容量 (最高答對的目標數量)
+            commissionErrors: 0    // 假性記憶 (點擊錯誤干擾項的次數)
         };
 
-        const STAGES_CONFIG = [
-            { id: 1, label: "Phase 1: 基準期", targets: 3, distractors: 3, type: "RANDOM" },
-            { id: 2, label: "Phase 2: 壓力期", targets: 5, distractors: 5, type: "RANDOM" },
-            { id: 3, label: "Phase 3: 語意干擾期", targets: 5, distractors: 5, type: "SEMANTIC" }
-        ];
+        let currentLevel = 1;      // 動態難度級別
+        let currentTargets = [];   // 當前關卡的正確目標
+        let selectedItems = [];    // 使用者已點擊的項目
+        
+        let globalTimer = null;
+        let startTime = 0;
+        let optionsRenderTime = 0; // 選項出現的時間點
+        let isRetrieving = false;  // 狀態鎖：是否處於可點擊選項的狀態
 
-        let sessionMetrics = {
-            initiationLatencies: [],
-            interTapIntervals: [],
-            errors: { semantic: 0, random: 0, omission: 0 }
-        };
-
-        let currentStageIdx = 0;
-        let stageStartTime = 0;
-        let lastTapTime = 0;
-        let globalStartTime = 0;
-        let isRetrievalMode = false;
-        let currentTargets = [];
-
-        function initTest() {
-            globalStartTime = performance.now();
-            sessionMetrics = { initiationLatencies: [], interTapIntervals: [], errors: { semantic: 0, random: 0, omission: 0 } };
-            updateGlobalTimer();
-            runStage(0);
-        }
-
-        function updateGlobalTimer() {
-            const elapsed = (performance.now() - globalStartTime) / 1000;
-            const progress = (elapsed / 60) * 100;
-            document.getElementById('timer-bar').style.width = `${progress}%`;
-            document.getElementById('time-tag').innerText = `${Math.max(0, 60 - Math.floor(elapsed))}s`;
-
-            if (elapsed < 60) {
-                // 每 20 秒強制切換階段
-                const nextIdx = Math.floor(elapsed / 20);
-                if (nextIdx > currentStageIdx) {
-                    currentStageIdx = nextIdx;
-                    runStage(currentStageIdx);
-                }
-                requestAnimationFrame(updateGlobalTimer);
-            } else {
-                renderFinalReport();
-            }
-        }
-
-        function runStage(idx) {
-            if (idx >= STAGES_CONFIG.length) return;
-            const config = STAGES_CONFIG[idx];
-            document.getElementById('stage-tag').innerText = config.label;
+        function startGame() {
+            // 重置所有數據與狀態
+            metrics = { rtArray: [], maxCapacity: 0, commissionErrors: 0 };
+            currentLevel = 1;
+            startTime = performance.now();
             
-            const data = generateLevel(config);
-            currentTargets = data.targets;
-            isRetrievalMode = false;
+            startGlobalTimer();
+            playRound();
+        }
 
-            // 1. 編碼階段 (顯示 3 秒)
-            let html = `<h2>請記住以下物品</h2><div class="items-container">`;
-            html += data.targets.map(t => `<div class="item-card">${t}</div>`).join('');
-            html += `</div>`;
-            document.getElementById('main-stage').innerHTML = html;
+        function startGlobalTimer() {
+            const timeTag = document.getElementById('time-tag');
+            const timerBar = document.getElementById('timer-bar');
+            
+            globalTimer = setInterval(() => {
+                const elapsed = performance.now() - startTime;
+                const remaining = 60000 - elapsed;
+                
+                if (remaining <= 0) {
+                    clearInterval(globalTimer);
+                    endGame();
+                } else {
+                    timeTag.innerText = Math.ceil(remaining / 1000) + 's';
+                    timerBar.style.width = (remaining / 60000 * 100) + '%';
+                }
+            }, 100);
+        }
 
+        function playRound() {
+            isRetrieving = false;
+            selectedItems = [];
+            document.getElementById('level-tag').innerText = `難度: ${currentLevel}`;
+            
+            // 動態難度設定：Level 1 從 2 個物件開始，每升一級多 1 個
+            const targetCount = currentLevel + 1; 
+            const distractorCount = targetCount + 2; // 干擾項永遠比目標多 2 個，製造壓力
+            
+            // 隨機抽取目標與干擾項
+            const shuffledAssets = [...ASSETS].sort(() => 0.5 - Math.random());
+            currentTargets = shuffledAssets.slice(0, targetCount);
+            const distractors = shuffledAssets.slice(targetCount, targetCount + distractorCount);
+            const allOptions = [...currentTargets, ...distractors].sort(() => 0.5 - Math.random());
+
+            // 1. 編碼期 (記住目標) - 固定給予 3 秒
+            renderStage(`<h2>請記住這 ${targetCount} 個物品</h2>`, currentTargets, false);
+            
             setTimeout(() => {
-                startRetrieval(data, config);
+                // 若時間已到，不再渲染選項
+                if (performance.now() - startTime >= 60000) return; 
+                
+                // 2. 檢索期 (找出目標)
+                renderStage(`<h2>請選出剛才出現的 ${targetCount} 個物品</h2>`, allOptions, true);
+                optionsRenderTime = performance.now();
+                isRetrieving = true;
             }, 3000);
         }
 
-        function generateLevel(config) {
-            const categories = Object.keys(ASSETS);
-            const mainCat = categories[Math.floor(Math.random() * categories.length)];
-            const targets = ASSETS[mainCat].sort(() => 0.5 - Math.random()).slice(0, config.targets);
+        function renderStage(titleHtml, items, isClickable) {
+            const stage = document.getElementById('game-stage');
+            let html = titleHtml + `<div class="items-container">`;
             
-            let distractors;
-            if (config.type === "SEMANTIC") {
-                // 從同類別選取干擾項
-                distractors = ASSETS[mainCat].filter(i => !targets.includes(i)).slice(0, config.distractors);
-            } else {
-                // 從其他類別選取干擾項
-                const otherCat = categories.find(c => c !== mainCat);
-                distractors = ASSETS[otherCat].sort(() => 0.5 - Math.random()).slice(0, config.distractors);
-            }
-
-            return { 
-                targets, 
-                options: [...targets, ...distractors].sort(() => 0.5 - Math.random()),
-                isSemanticMode: config.type === "SEMANTIC"
-            };
-        }
-
-        function startRetrieval(data, config) {
-            isRetrievalMode = true;
-            stageStartTime = performance.now();
-            lastTapTime = 0;
-
-            let html = `<h2>請選出剛才出現的物品</h2><div class="items-container">`;
-            html += data.options.map(o => {
-                const isSemanticDistractor = data.isSemanticMode && !data.targets.includes(o);
-                return `<div class="item-card" onclick="handleTap(this, '${o}', ${isSemanticDistractor})">${o}</div>`;
-            }).join('');
+            items.forEach(item => {
+                const clickAttr = isClickable ? `onclick="handleTap(this, '${item}')"` : '';
+                html += `<div class="item-card" ${clickAttr}>${item}</div>`;
+            });
+            
             html += `</div>`;
-            document.getElementById('main-stage').innerHTML = html;
+            stage.innerHTML = html;
         }
 
-        function handleTap(el, val, isSemanticDistractor) {
-            if (el.classList.contains('selected')) return;
-            
+        window.handleTap = (el, val) => {
+            if (!isRetrieving || el.classList.contains('selected') || el.classList.contains('error')) return;
+
             const now = performance.now();
             const isCorrect = currentTargets.includes(val);
 
-            // 數據擷取：反應延遲
-            if (lastTapTime === 0) {
-                sessionMetrics.initiationLatencies.push(now - stageStartTime);
-            } else {
-                sessionMetrics.interTapIntervals.push(now - lastTapTime);
-            }
-            lastTapTime = now;
+            if (isCorrect) {
+                el.classList.add('selected');
+                selectedItems.push(val);
+                
+                // 紀錄反應速度：從選項出現到點擊正確目標的時間差
+                metrics.rtArray.push(now - optionsRenderTime);
 
-            // 數據擷取：錯誤分類
-            if (!isCorrect) {
-                if (isSemanticDistractor) sessionMetrics.errors.semantic++;
-                else sessionMetrics.errors.random++;
-            }
-
-            el.classList.add('selected');
-        }
-
-        function renderFinalReport() {
-            isRetrievalMode = false;
-            const avgInit = calculateAvg(sessionMetrics.initiationLatencies);
-            const avgInter = calculateAvg(sessionMetrics.interTapIntervals);
-
-            document.getElementById('main-stage').innerHTML = `
-                <h2>📊 數位生物特徵報告 (亞東 PoC)</h2>
-                <div class="metrics-log">
-                    <p><b>1. 認知啟動延遲 (Initiation):</b> ${avgInit.toFixed(0)} ms<br>
-                    <small>看到選項至首次正確決策的時間，排除運動神經遲緩影響。</small></p>
-                    
-                    <p><b>2. 檢索搜尋阻力 (Inter-tap):</b> ${avgInter.toFixed(0)} ms<br>
-                    <small>連續選取間的時間差。數值升高代表工作記憶提取阻力增加。</small></p>
-                    
-                    <p><b>3. 錯誤型態分析 (Error Typology):</b><br>
-                    • 語意錯構 (Semantic): <span class="highlight">${sessionMetrics.errors.semantic}</span> 次<br>
-                    • 隨機干擾 (Random): ${sessionMetrics.errors.random} 次<br>
-                    <small>註：語意錯構頻率對早期阿茲海默症 (AD) 具有高度臨床特異性。</small></p>
-                </div>
-                <button class="btn-large" style="margin-top:20px;" onclick="location.reload()">重新啟動測試</button>
-            `;
-        }
-
-        function calculateAvg(arr) {
-            return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-        }
-    </script>
-</body>
-</html>
+                // 檢查是否已找齊所有目標
+                if (selectedItems.length === currentTargets.length) {
+                    isRetrieving = false; // 鎖定點擊
+                    // 紀錄最大容量
+                    if (currentTargets.length > metrics.maxCapacity) {
+                        metrics.maxCapacity = currentTargets.length;
